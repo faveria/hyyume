@@ -1,6 +1,5 @@
 require('dotenv').config();
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
 const http = require('http');
@@ -9,7 +8,7 @@ const app = express();
 const server = http.createServer(app);
 
 // Import konfigurasi
-const connectDB = require('./config/database');
+const { connectDB } = require('./config/database');
 const mqttClient = require('./config/mqtt');
 const { initializeSocket } = require('./config/socket');
 
@@ -30,6 +29,7 @@ app.get('/', (req, res) => {
   res.json({
     message: 'HY.YUME Monitor Backend API',
     version: '1.0.0',
+    database: 'MySQL',
     endpoints: {
       sensorData: '/api/data',
       latestData: '/api/data/latest',
@@ -59,9 +59,9 @@ app.use('*', (req, res) => {
 // Initialize services
 const initializeApp = async () => {
   try {
-    // Connect to MongoDB
+    // Connect to MySQL
     await connectDB();
-    console.log('✅ Connected to MongoDB');
+    console.log('✅ Connected to MySQL');
 
     // Initialize MQTT
     mqttClient.initialize();
@@ -76,6 +76,7 @@ const initializeApp = async () => {
     server.listen(PORT, () => {
       console.log(`🚀 HY.YUME Monitor Backend running on port ${PORT}`);
       console.log(`📊 API Documentation: http://localhost:${PORT}`);
+      console.log(`🗄️  Database: MySQL`);
     });
   } catch (error) {
     console.error('❌ Failed to initialize app:', error);

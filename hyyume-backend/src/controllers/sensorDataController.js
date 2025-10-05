@@ -5,19 +5,21 @@ const getAllSensorData = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 50;
-    const skip = (page - 1) * limit;
 
-    const data = await SensorData.find()
-      .sort({ timestamp: -1 })
-      .skip(skip)
-      .limit(limit);
-
+    const data = await SensorData.findAll({ page, limit, sort: 'timestamp DESC' });
     const total = await SensorData.countDocuments();
     const totalPages = Math.ceil(total / limit);
 
+    // Add virtual fields to each data item
+    const enhancedData = data.map(item => ({
+      ...item,
+      isOptimal: SensorData.isOptimal(item),
+      status: SensorData.getStatus(item)
+    }));
+
     res.json({
       success: true,
-      data,
+      data: enhancedData,
       pagination: {
         page,
         limit,
@@ -39,7 +41,7 @@ const getAllSensorData = async (req, res) => {
 // Get latest sensor data
 const getLatestSensorData = async (req, res) => {
   try {
-    const data = await SensorData.findOne().sort({ timestamp: -1 });
+    const data = await SensorData.findOne({ sort: 'timestamp DESC' });
     
     if (!data) {
       return res.status(404).json({
@@ -48,9 +50,16 @@ const getLatestSensorData = async (req, res) => {
       });
     }
 
+    // Add virtual fields
+    const enhancedData = {
+      ...data,
+      isOptimal: SensorData.isOptimal(data),
+      status: SensorData.getStatus(data)
+    };
+
     res.json({
       success: true,
-      data
+      data: enhancedData
     });
   } catch (error) {
     res.status(500).json({
@@ -73,9 +82,16 @@ const getSensorDataById = async (req, res) => {
       });
     }
 
+    // Add virtual fields
+    const enhancedData = {
+      ...data,
+      isOptimal: SensorData.isOptimal(data),
+      status: SensorData.getStatus(data)
+    };
+
     res.json({
       success: true,
-      data
+      data: enhancedData
     });
   } catch (error) {
     res.status(500).json({
@@ -89,35 +105,18 @@ const getSensorDataById = async (req, res) => {
 // Get sensor data statistics
 const getSensorStats = async (req, res) => {
   try {
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-
-    const stats = await SensorData.aggregate([
-      {
-        $match: {
-          timestamp: { $gte: twentyFourHoursAgo }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          avgSuhu: { $avg: '$suhu' },
-          avgPH: { $avg: '$ph' },
-          avgTDS: { $avg: '$tds' },
-          avgKelembaban: { $avg: '$kelembaban' },
-          maxSuhu: { $max: '$suhu' },
-          minSuhu: { $min: '$suhu' },
-          count: { $sum: 1 }
-        }
-      }
-    ]);
-
-    const latestData = await SensorData.findOne().sort({ timestamp: -1 });
+    const stats = await SensorData.getStats24h();
+    const latestData = await SensorData.findOne({ sort: 'timestamp DESC' });
 
     res.json({
       success: true,
       data: {
-        stats: stats[0] || {},
-        latest: latestData
+        stats: stats,
+        latest: latestData ? {
+          ...latestData,
+          isOptimal: SensorData.isOptimal(latestData),
+          status: SensorData.getStatus(latestData)
+        } : null
       }
     });
   } catch (error) {
