@@ -15,7 +15,7 @@ class MQTTService {
       this.client.on('connect', () => {
         this.isConnected = true;
         console.log('✅ Connected to MQTT Broker');
-        
+
         // Subscribe to sensor data topic
         this.client.subscribe(process.env.MQTT_TOPIC, (err) => {
           if (err) {
@@ -27,12 +27,14 @@ class MQTTService {
       });
 
       this.client.on('message', async (topic, message) => {
+        console.log(`📩 Pesan MQTT diterima dari ${topic}: ${message.toString()}`); // <== Tambahan penting!
+
         try {
           if (topic === process.env.MQTT_TOPIC) {
             await this.handleSensorData(message.toString());
           }
         } catch (error) {
-          console.error('Error processing MQTT message:', error);
+          console.error('❌ Error processing MQTT message:', error);
         }
       });
 
@@ -54,13 +56,16 @@ class MQTTService {
   async handleSensorData(message) {
     try {
       const sensorData = JSON.parse(message);
-      
-      // Validate required fields
+
+      // Tambahkan log isi datanya biar kamu tahu apa yang dikirim
+      console.log('🧠 Data sensor diterima:', sensorData);
+
+      // Validasi field wajib
       if (!sensorData.suhu || !sensorData.ph || !sensorData.tds) {
-        throw new Error('Invalid sensor data: missing required fields');
+        throw new Error('⚠️ Invalid sensor data: missing required fields');
       }
 
-      // Create new sensor data document
+      // Simpan ke database
       const newData = new SensorData({
         suhu: parseFloat(sensorData.suhu),
         ph: parseFloat(sensorData.ph),
@@ -70,21 +75,24 @@ class MQTTService {
       });
 
       const savedData = await newData.save();
-      console.log('📊 Sensor data saved:', savedData._id);
+      console.log(`💾 Data sensor tersimpan di database dengan ID: ${savedData._id}`);
 
-      // Broadcast to connected WebSocket clients
+      // Kirim ke client frontend via websocket
       broadcastSensorData(savedData);
+      console.log('📡 Data dikirim ke client via Socket.IO');
 
     } catch (error) {
-      console.error('Error handling sensor data:', error);
+      console.error('❌ Error handling sensor data:', error);
     }
   }
 
   publish(topic, message) {
     if (this.isConnected && this.client) {
       this.client.publish(topic, JSON.stringify(message));
+      console.log(`📤 Data dikirim ke topic ${topic}: ${JSON.stringify(message)}`);
     }
   }
 }
 
 module.exports = new MQTTService();
+

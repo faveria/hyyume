@@ -28,14 +28,15 @@ const createTableIfNotExists = async () => {
   const createTableQuery = `
     CREATE TABLE IF NOT EXISTS sensor_data (
       id INT AUTO_INCREMENT PRIMARY KEY,
-      suhu DECIMAL(5,2) NOT NULL,
-      ph DECIMAL(4,2) NOT NULL,
-      tds INT NOT NULL,
-      kelembaban DECIMAL(5,2),
+      suhu FLOAT NOT NULL,
+      ph FLOAT NOT NULL,
+      tds FLOAT NOT NULL,
+      device_id VARCHAR(20) NOT NULL,
       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      INDEX idx_timestamp (timestamp)
+      INDEX idx_timestamp (timestamp),
+      INDEX idx_device_id (device_id)
     )
   `;
   
